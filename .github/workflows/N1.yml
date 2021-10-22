@@ -9,6 +9,9 @@ on:
     - cron: 0 23 * * *
   watch:
     types: started
+    env:
+    UPLOAD_RELEASE: true
+    
 jobs:
   run-it:
     runs-on: ubuntu-latest
@@ -22,15 +25,13 @@ jobs:
           KERNEL_VERSION_NAME: 5.14.14_5.4.155
           
       - name: Upload OpenWrt Firmware to Release
-        uses: ncipollo/release-action@v1
-         with:
-    tag: openwrt_armvirt_v8_${{ env.PACKAGED_OUTPUTDATE }}
-    artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
-    allowUpdates: true
-    token: ${{ secrets.GITHUB_TOKEN }}
-    body: |
-      This is OpenWrt firmware for Armvirt 64
-      * Firmware information
-      Default IP: 192.168.1.1
-      Default username: root
-      Default password: password
+        uses: softprops/action-gh-release@v1
+        if: env.PACKAGED_STATUS == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: openwrt_armvirt_${{ env.PACKAGED_OUTPUTDATE }}
+          files: ${{ env.PACKAGED_OUTPUTPATH }}/*
+          body: |
+            This is OpenWrt firmware for Armvirt 64
+            * Firmware information
