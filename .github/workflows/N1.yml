@@ -36,14 +36,13 @@ jobs:
              N1和HK1全新安装方法：
                 1. cd root
                 2. ./install-to-emmc.sh
+             
              N1和HK1在线升级方法：
                 1. cd /mnt/mmcblk2p4
-                2. wget 升级脚本链接,鼠标右击openwrt-update-amlogic 文件获取链接地址
-                3. wget img.gz后缀名的固件链接,鼠标右击后缀.img.gz文件获取链接地址
-                4. gzip -d 解压缩上一步下载的固件全名
-                5. chmod +x openwrt-update-amlogic
-                6. ./openwrt-update-amlogic后，选择y是保留配置升级，选N相当于重装。
-                7.升级完成后系统会自动重启，稍安勿躁。
+                2. wget img.gz后缀名的固件链接,鼠标右击后缀.img.gz文件获取链接地址
+                3. gzip -d 解压缩上一步下载的固件全名
+                4. ./openwrt-update-amlogic后，选择y是保留配置升级，选N相当于重装。
+                5.升级完成后系统会自动重启，稍安勿躁。
 
       - name: Remove old Releases
         uses: dev-drprasad/delete-older-releases@v0.1.0
