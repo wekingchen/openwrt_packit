@@ -32,3 +32,9 @@ jobs:
            body: |
              ## 以下为N1的最新固件（每日上午7时自动编译打包最新固件）
              默认IP：192.168.1.99 默认密码： password
+
+      - name: Delete workflow runs
+        uses: GitRML/delete-workflow-runs@main
+        with:
+          retain_days: 1
+          keep_minimum_runs: 3
