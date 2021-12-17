@@ -890,6 +890,7 @@ function copy_supplement_files() {
         [ -n "$OPENWRT_KERNEL" ] && [ -f ${OPENWRT_KERNEL} ] && cp -v ${OPENWRT_KERNEL} ./usr/sbin/
         [ -n "$OPENWRT_BACKUP" ] && [ -f ${OPENWRT_BACKUP} ] && cp -v ${OPENWRT_BACKUP} ./usr/sbin/ && (cd usr/sbin && ln -sfv openwrt-backup flippy)
         [ -n "$OPENWRT_UPDATE" ] && [ -f ${OPENWRT_UPDATE} ] && cp -v ${OPENWRT_UPDATE} ./usr/sbin/
+	[ -n "${DDBR}" ] && [ -f "${DDBR}" ] && cp -v ${DDBR} ./usr/sbin/
 
         # 我家云, 风扇调速脚本
         if [ "$PLATFORM" == "rockchip" ] && [ "$SOC" == "rk3328" ] && [ "$BOARD" == "l1pro" ] && [ -f "$PWM_FAN" ];then
@@ -1025,6 +1026,8 @@ function adjust_samba_config() {
          if [ -f ./etc/config/samba4 ];then
              echo "发现 samba4, 将启用 smbv1 协议. "        
              sed -e 's/services/nas/g' -i ./usr/lib/lua/luci/controller/samba4.lua
+	     sed -e 's/services/nas/g' -i ./usr/share/luci/menu.d/luci-app-samba4.json
+
              [ -f ${SMB4_PATCH} ] && patch -p1 < ${SMB4_PATCH}
          fi
     )
