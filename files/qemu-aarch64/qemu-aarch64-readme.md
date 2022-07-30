@@ -35,6 +35,7 @@
   - [8. 内核升级](#8-内核升级)
     - [8.1 命令行升级方法](#81-命令行升级方法)
     - [8.2 用晶晨宝盒插件进行升级](#82-用晶晨宝盒插件进行升级)
+  - [9. 创建自定义尺寸的镜像文件](#9-创建自定义尺寸的镜像文件)
 
 ## 1. 物理机安装依赖包
 
@@ -49,7 +50,7 @@ dmesg | grep kvm
 
 在物理机系统中安装 KVM 依赖包：
 ```yaml
-sudo apt-get install -y gconf2 qemu-system qemu-system-arm qemu-utils qemu-efi libvirt-daemon-system libvirt-clients bridge-utils virtinst virt-manager seabios vgabios gir1.2-spiceclientgtk-3.0 xauth
+sudo apt-get install -y gconf2 qemu-system-arm qemu-utils qemu-efi libvirt-daemon-system libvirt-clients bridge-utils virtinst virt-manager seabios vgabios gir1.2-spiceclientgtk-3.0 xauth
 ```
 
 安装 x11 字库（可选）
@@ -61,7 +62,7 @@ sudo apt-get install -y fonts-noto*
 ```yaml
 sudo apt-get install -y tasksel
 ```
-运行 `tasksel` 测试，选择至少一个桌面环境即可。
+运行 `tasksel` 命令，选择至少一个桌面环境即可。
 
 
 对于性能过剩的盒子，可以先安装 Armbian 系统，再安装 KVM 虚拟机实现多系统使用。其中 OpenWrt 系统的编译可以使用本仓库的 mk_qemu-aarch64_img.sh 脚本进行制作，更多系统如 Debian、Ubuntu、OpenSUSE、ArchLinux、Centos、Gentoo、KyLin、UOS 等可在相关网站查阅安装与使用说明。
@@ -132,7 +133,10 @@ iface eth1 inet manual
   pre-up   ifconfig $IFACE up
   pre-down ifconfig $IFACE down
 ```
-关闭 `NetworkManager.service`
+```bash
+systemctl restart networking.service
+```
+如果`NetworkManager.service`是启用状态的话，需要关闭 `NetworkManager.service`
 ```yaml
 systemctl stop NetworkManager.service
 systemctl disable NetworkManager.service
@@ -207,13 +211,30 @@ sudo systemctl status libvirtd
 
 表现为：虚拟机能ping通主机，主机也能ping通虚拟机，但虚机ping不通外网。
 
-解决方法：一般是物理机防火墙开着引起的，可以关掉防火墙，或者在物理机的 `/etc/sysctl.conf` 里添加以下内容：
+解决方法1：物理机防火墙的默认规则会阻止虚拟机访问外网，标准的解决方案是在物理机的 `/etc/sysctl.conf` 里添加以下内容, 以禁用网桥上的 netfilter：
 ```yaml
 net.bridge.bridge-nf-call-ip6tables = 0
 net.bridge.bridge-nf-call-iptables = 0
 net.bridge.bridge-nf-call-arptables = 0
 ```
 然后运行 `sysctl  -p`
+
+以上内容参考了 [https://wiki.libvirt.org/page/Net.bridge.bridge-nf-call_and_sysctl.conf](https://wiki.libvirt.org/page/Net.bridge.bridge-nf-call_and_sysctl.conf)
+
+解决方法2: 有另一种方法可以让所有路由桥接 KVM 虚拟机完全不受限制地访问互联网，而无需处理防火墙规则。
+
+默认情况下，所有接口都绑定到公共防火墙区域。但是有多个区域，即`firewall-cmd --list-all-zones`其中一个称为`trusted`，这是一个未过滤的防火墙区域，默认情况下接受所有数据包。因此，您可以将网桥接口绑定到该区域。
+```bash
+firewall-cmd --remove-interface br0 --zone=public --permanent
+firewall-cmd --add-interface br0 --zone=trusted --permanent
+firewall-cmd --reload
+```
+
+解决方法3: 关闭防火墙服务
+```bash
+systemctl stop firewalld.service
+systemctl disable firewalld.service
+```
 
 ## 6. 进阶用法
 
@@ -400,3 +421,14 @@ cd /mnt/vda4
 
 使用方法基本与 7.2 相同
 
+## 9. 创建自定义尺寸的镜像文件
+  
+  默认的img镜像是 1057MB(SKIP_MB=16 BOOT_MB=16 ROOTFS_MB=1024 TAIL_MB=1,  16+16+1024+1=1057), 包括 efi + rootfs1 等2个分区；
+  
+  默认的qcow2镜像，由于是动态分配，其初始尺寸比较小(<1057MB)，但实际在虚拟机中的磁盘容量却很大(默认是 16385MB, QCOW2_MB="+15328M", 1057+15328=16385)，且包含4个分区(efi + rootfs1 + rootfs2 + share), 在使用过程中，qcow2 占用物理机磁盘的空间会逐渐变大，直至撑满16385MB的最大尺寸。
+                                            
+  在使用 mk_qemu-aarch64_img.sh 创建镜像时，可以自定义分区尺寸以符合个性化需求， 一般情况下可以修改 ROOTFS_MB(略大于 rootfs + kernel 解压以后所占的空间 * 0.6 即可，btrfs + zstd 压缩率大约是 40-50% )及 QCOW2_MB 两个变量， 例如：
+```bash
+ROOTFS_MB=640 QCOW2_MB="+2048M" ./mk_qemu-aarch64_img.sh 
+```
+上述命令可创建出 16+16+640+1=673MB 的 img 镜像，以及 673+2048=2721MB 的 qcow2 镜像， 在qcow2镜像中，4个分区尺寸分别为： 16MB、640MB、640MB、1408MB
