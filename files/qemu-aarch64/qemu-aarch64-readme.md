@@ -28,6 +28,7 @@
     - [6.6 虚拟机开机自启](#66-虚拟机开机自启)
     - [6.7 虚拟机双网卡主路由模式拓扑](#67-虚拟机双网卡主路由模式拓扑)
     - [6.8 对于大小核 soc 的特殊设置](#68-对于大小核-soc-的特殊设置)
+    - [6.9 物理机性能优化](#69-物理机性能优化)
   - [7. 固件升级](#7-固件升级)
     - [7.1 命令行升级方法](#71-命令行升级方法)
     - [7.2 用晶晨宝盒插件进行升级](#72-用晶晨宝盒插件进行升级)
@@ -48,9 +49,9 @@ dmesg | grep kvm
 
 <img width="600" src="https://user-images.githubusercontent.com/68696949/180730488-88848d3b-30c6-4c73-9321-4dc64c0c5fc7.png">
 
-在物理机系统中安装 KVM 依赖包：
+在物理机系统中安装 KVM 依赖包(ubuntu jammy)：
 ```yaml
-sudo apt-get install -y gconf2 qemu-system-arm qemu-utils qemu-efi libvirt-daemon-system libvirt-clients bridge-utils virtinst virt-manager seabios vgabios gir1.2-spiceclientgtk-3.0 xauth
+sudo apt-get install -y gconf2 qemu-system-arm qemu-utils qemu-efi ipxe-qemu libvirt-daemon-system libvirt-clients bridge-utils virtinst virt-manager seabios vgabios gir1.2-spiceclientgtk-3.0 xauth
 ```
 
 安装 x11 字库（可选）
@@ -321,6 +322,7 @@ virsh list   # 显示已启动的虚拟机， 如果要显示所有虚机，用 
 virsh edit vm_name  # 修改虚拟机的配置文件(/etc/libvirt/qemu/vm_name.xml)，有些更改会立即生效，而大多数更改需关闭虚拟机后才生效，此功能不建议初学者使用
 virsh console vm_name # 连接到虚拟机的控制台(/dev/ttyAMA0), 可执行 shell 命令， 类似于 docker exec -it container bash 的功能
 virsh start vm_name  # 启动虚拟机
+virsh start --console vm_name  # 启动虚拟机，同时连接到虚拟机控制台
 virsh reboot vm_name # 重启虚拟机，需要虚拟机中有 acpid 服务的支持，否则此命令无效。 建议在固件底包中加入 acpid
 virsh shutdown vm_name  # 正常停止虚拟机，需要虚拟机中有 acpid 服务的支持，否则此命令无效。 建议在固件底包中加入 acpid
 virsh destroy vm_name # 强行停止虚拟机
@@ -328,8 +330,15 @@ virsh destroy vm_name # 强行停止虚拟机
 
 ### 6.6 虚拟机开机自启
 
-`virsh autostart 虚拟机名字`
-
+```bash
+ virsh autostart vm_name
+ vi /etc/default/libivrt-guests
+   # set on boot action
+   ON_BOOT=start
+   # set on shutdown action
+   ON_SHUTDOWN=shutdown
+ ```
+ 
 <div style="width:100%;margin-top:40px;margin:5px;">
 <img width="307" src="https://user-images.githubusercontent.com/68696949/180751674-92a642b2-f8c6-4fad-80ed-1c77d950a7e4.png">
 </div>
@@ -375,11 +384,115 @@ virsh destroy vm_name # 强行停止虚拟机
   </cputune>
   ```  
   修改完毕之后，要关闭虚拟机才生效。
+  
+  优化建议：以 GT-King Pro (Amlogic S922X-H 为例）， 保留物理机的 cpu0 不分配，而把 cpu1-5 分配给虚拟机，其配置如下：
+  ```xml
+  <vcpu placement='static' cpuset='1-5'>5</vcpu>
+  <cputune>
+    <vcpupin vcpu='0' cpuset='1'/>
+    <vcpupin vcpu='1' cpuset='2'/>
+    <vcpupin vcpu='2' cpuset='3'/>
+    <vcpupin vcpu='3' cpuset='4'/>
+    <vcpupin vcpu='4' cpuset='5'/>
+    <emulatorpin cpuset='1-5'/>
+  </cputune>
+  ```
   本节内容参考了 [华为云: 虚拟机绑核](https://support.huaweicloud.com/tngg-kunpengcpfs/kunpengkvm_05_0008.html#:~:text=vcpu%20placement%20%3D%20%27static%27,cpuset%3D%274-7%27%EF%BC%9A%E7%94%A8%E4%BA%8EIO%E7%BA%BF%E7%A8%8B%E3%80%81worker%20threads%E7%BA%BF%E7%A8%8B%E4%BB%85%E8%83%BD%E4%BD%BF%E7%94%A84-7%E8%BF%994%E4%B8%AA%E6%A0%B8%EF%BC%8C%E8%8B%A5%E4%B8%8D%E9%85%8D%E7%BD%AE%E6%AD%A4%E5%8F%82%E6%95%B0%EF%BC%8C%E8%99%9A%E6%8B%9F%E6%9C%BA%E4%BB%BB%E5%8A%A1%E7%BA%BF%E7%A8%8B%E4%BC%9A%E5%9C%A8CPU%E4%BB%BB%E6%84%8Fcore%E4%B8%8A%E6%B5%AE%E5%8A%A8%EF%BC%8C%E4%BC%9A%E5%AD%98%E5%9C%A8%E6%9B%B4%E5%A4%9A%E7%9A%84%E8%B7%A8NUMA%E5%92%8C%E8%B7%A8DIE%E6%8D%9F%E8%80%97%E3%80%82%20vcpupin%E7%94%A8%E4%BA%8E%E9%99%90%E5%88%B6%E5%AF%B9CPU%E7%BA%BF%E7%A8%8B%E5%81%9A%E4%B8%80%E5%AF%B9%E4%B8%80%E7%BB%91%E6%A0%B8%E3%80%82%20%E8%8B%A5%E4%B8%8D%E4%BD%BF%E7%94%A8vcpupin%E7%BB%91CPU%E7%BA%BF%E7%A8%8B%EF%BC%8C%E5%88%99%E7%BA%BF%E7%A8%8B%E4%BC%9A%E5%9C%A84-7%E8%BF%99%E4%B8%AA4%E4%B8%AA%E6%A0%B8%E4%B9%8B%E9%97%B4%E5%88%87%E6%8D%A2%EF%BC%8C%E9%80%A0%E6%88%90%E9%A2%9D%E5%A4%96%E5%BC%80%E9%94%80%E3%80%82)
+
+### 6.9 物理机性能优化
+ 
+运行 armbian-config， 选择 system -> cpu -> minfreq -> maxfreq -> governor ( 建议选择 schedutil ) 
+
+另外， 对于一般的arm64 soc，采用内置网卡或usb网卡时，通常会挤占cpu0, 导致整体网络性能不佳（如果网卡是 pcie 接口，并且支持 rss 多队列的话则不存在此问题）
+  
+armbian 有一个系统服务： armbian-hardware-optimize.service ， 可以对 softirq 等进行一些必要的优化，可以选择开启：
+```bash
+systemctl status armbian-hardware-optimize.service 
+systemctl enable armbian-hardware-optimize.service
+systemctl start armbian-hardware-optimize.service
+```
+  
+如果 armbian-hardware-optimize.service 没有达到预期效果，或是没采用 armbian的话，可以用我写的脚本： [balethirq.pl](/files/balethirq.pl) + [配置文件：balance_irq demo](/files/s922x/balance_irq):
+```bash
+cp   balethirq.pl  /usr/sbin
+
+# 创建 /etc/balance_irq， 进行中断配置，简而言之就是把两张网卡产生的中断分散到两个cpu里（默认情况下是共用第1个cpu)
+# 设备名称(devname)  cpu亲和性(cpu affinity)
+vi  /etc/balance_irq
+eth0 1
+xhci-hcd:usb1 6
+```
+  
+balance_irq配置参考：
+```bash
+root@gtking-pro:~# cat /proc/interrupts 
+           CPU0       CPU1       CPU2       CPU3       CPU4       CPU5       
+  9:          0          0          0          0          0          0     GICv2  25 Level     vgic
+ 11:   17580788   33822531   34847277   34198393   34319935   34518922     GICv2  30 Level     arch_timer
+ 12:          0     229777     183235     217133     194856     188719     GICv2  27 Level     kvm guest vtimer
+ 14:          0          0          0     640860          0          0     GICv2  40 Level     eth0
+ 15:         15          0          0          0          0          0     GICv2  89 Edge      dw_hdmi_top_irq, ff600000.hdmi-tx
+ 21:          0          0          0          0          0          0     GICv2 235 Edge      ff800280.cec
+ 22:         40          0          0          0          0          0     GICv2 225 Edge      ttyAML0
+ 23:          8          0          0          0          0          0     GICv2 228 Edge      ff808000.ir
+ 24:          0          0          0          0          0          0     GICv2  76 Edge      vdec
+ 25:          0          0          0          0          0          0     GICv2  64 Edge      esparserirq
+ 26:        314          0          0          0          0          0     GICv2  35 Edge      meson
+ 27:       1126          0          0          0          0          0     GICv2  71 Edge      ffd1c000.i2c
+ 28:       4778          0          0          0          0          0     GICv2  58 Edge      ttyAML6
+ 29:    3468797          0          0          0          0          0     GICv2 221 Edge      ffe03000.sd
+ 30:          0          0          0          0          0          0     GICv2 222 Edge      ffe05000.sd
+ 31:       5233      91355          0          0          0          0     GICv2 223 Edge      ffe07000.mmc
+ 33:          0          0          0          0          0          0     GICv2 194 Level     panfrost-job
+ 34:          0          0          0          0          0          0     GICv2 193 Level     panfrost-mmu
+ 35:          4          0          0          0          0          0     GICv2 192 Level     panfrost-gpu
+ 36:          0          0          0          0          0          0     GICv2  63 Level     ff400000.usb, ff400000.usb
+ 37:        535          0    3031088          0          0          0     GICv2  62 Level     xhci-hcd:usb1
+ 38:          1          0          0          0          0          0  meson-gpio-irqchip  26 Level     mdio_mux-0.0:00
+IPI0:    113124     140214    3226181     993988    1235145    1329681       Rescheduling interrupts
+IPI1:     66072     703466     282906     331811    3737960     332876       Function call interrupts
+IPI2:         0          0          0          0          0          0       CPU stop interrupts
+IPI3:         0          0          0          0          0          0       CPU stop (for crash dump) interrupts
+IPI4:         0          0          0          0          0          0       Timer broadcast interrupts
+IPI5:      3761      15984     378310     823397    1323761     923798       IRQ work interrupts
+IPI6:         0          0          0          0          0          0       CPU wake-up interrupts
+Err:          0  
+```
+需要注意到两张网卡： 内置网卡`eth0`，以及外置网卡（USB RTL8153)， 表现为 `xhci-hcd:usb1`
+
+在上例的 `balance_irq` 里， `eth0 -> cpu1`     `xhci-hcd:usb1 -> cpu6`  在这里，cpu编号是从1开始，而不是从0开始
+  
+最后，把 `/usr/sbin/balethirq.pl`  添加到  `/etc/rc.local` 里以实现开机启动。
+```bash
+root@gtking-pro:~# cat /etc/rc.local
+#!/bin/sh -e
+#
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "exit 0" on success or any other
+# value on error.
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# By default this script does nothing.
+
+/usr/sbin/balethirq.pl
+exit 0
+```
+  
+```bash
+root@gtking-pro:~# balethirq.pl 
+irq name:eth0, irq:14, affinity: 1
+irq name:xhci-hcd:usb1, irq:37, affinity: 20
+Set the rps cpu mask of eth0 to 0x1e
+Set the rps cpu mask of eth1 to 0x1e
+```
   
 ## 7. 固件升级
 
-每次固件发布会有2个文件：`openwrt_qemu-aarch64_generic_vm_k5.18.13-flippy-75+.img` 和 `openwrt_qemu-aarch64_generic_vm_k5.18.13-flippy-75+.qcow2`
+每次固件发布会有2个文件, 例如：`openwrt_qemu-aarch64_generic_R22.7.7_k5.18.15-flippy-75+_update.img` 和 `openwrt_qemu-aarch64_R22.7.7_k5.18.15-flippy-75+.qcow2`
 其中，后缀为.qcow2的文件是首次创建虚拟机用的，而另一个后缀为.img的文件就用于升级的。
 
 ### 7.1 命令行升级方法
