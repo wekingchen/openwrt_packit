@@ -715,7 +715,7 @@ function extract_rockchip_boot_files() {
     echo -n "释放 Kernel zImage、uInitrd 及 dtbs 压缩包 ... "
     ( 
           cd ${TGT_BOOT} && \
-              cp "${BOOTFILES_HOME}"/* . && \
+              cp -v "${BOOTFILES_HOME}"/* . && \
               tar xzf "${BOOT_TGZ}" && \
               rm -f initrd.img-${KERNEL_VERSION} && \
               ln -sf vmlinuz-${KERNEL_VERSION} Image && \
@@ -1008,6 +1008,10 @@ EOF
 UBOOT_OVERLOAD=${UBOOT_WITHOUT_FIP}
 EOF
         fi
+
+	if [ "${SOC}" == "rk3588" ];then
+            echo "LOCK_KERNEL=${LOCK_KERNEL}" >> ./etc/flippy-openwrt-release
+        fi
     )
     cat $TGT_ROOT/etc/flippy-openwrt-release
     echo 
@@ -1054,11 +1058,22 @@ function copy_supplement_files() {
         [ -n "$OPENWRT_UPDATE" ] && [ -f ${OPENWRT_UPDATE} ] && cp -v ${OPENWRT_UPDATE} ./usr/sbin/
 	[ -n "${DDBR}" ] && [ -f "${DDBR}" ] && cp -v ${DDBR} ./usr/sbin/
 
-        # 我家云, 风扇调速脚本
-        if [ "$PLATFORM" == "rockchip" ] && [ "$SOC" == "rk3328" ] && [ "$BOARD" == "l1pro" ] && [ -f "$PWM_FAN" ];then
-            cp -v $PWM_FAN ./usr/bin
-            echo "pwm_fan" > ./etc/modules.d/pwm_fan
-            sed -e "/exit/i\/usr/bin/pwm-fan.pl &" -i etc/rc.local
+        # 我家云, rock5b 风扇调速脚本
+        if [ "$PLATFORM" == "rockchip" ];then
+	    if [ "$SOC" == "rk3328" ] && [ "$BOARD" == "l1pro" ] && [ -f "$PWM_FAN" ];then
+                echo "该机型有pwm风扇接口，故添加风扇调速脚本 ... "
+                cp -v $PWM_FAN ./usr/bin
+                echo "pwm_fan" > ./etc/modules.d/pwm_fan
+                sed -e "/exit/i\/usr/bin/pwm-fan.pl &" -i etc/rc.local
+                echo "完成"
+            fi
+	    if [ "$SOC" == "rk3588" ] && [ "$BOARD" == "rock5b" ] && [ -f "$PWM_FAN" ];then
+                echo "该机型有pwm风扇接口，故添加风扇调速脚本 ... "
+                cp -v $PWM_FAN ./usr/bin
+                echo "pwm_fan" > ./etc/modules.d/pwm_fan
+                sed -e "/exit/i\/usr/bin/pwm-fan.pl &" -i etc/rc.local
+                echo "完成"
+            fi
         fi
 
         [ -n "$BAL_ETH_IRQ" ] && [ -f $BAL_ETH_IRQ ] && cp -v $BAL_ETH_IRQ ./usr/sbin && chmod 755 ./usr/sbin/balethirq.pl && \
@@ -1292,12 +1307,22 @@ ttyS0::askfirst:/usr/libexec/login.sh
 EOF
                          echo "完成"
                          ;;
-             rockchip)   cat > ./etc/inittab <<EOF
+             rockchip)   if [ "${SOC}" == rk3588 ];then
+                             cat > ./etc/inittab <<EOF
+::sysinit:/etc/init.d/rcS S boot
+::shutdown:/etc/init.d/rcS K shutdown
+tty1::askfirst:/usr/libexec/login.sh
+ttyS2::askfirst:/usr/libexec/login.sh
+ttyFIQ0::askfirst:/usr/libexec/login.sh
+EOF
+                         else
+                             cat > ./etc/inittab <<EOF
 ::sysinit:/etc/init.d/rcS S boot
 ::shutdown:/etc/init.d/rcS K shutdown
 tty1::askfirst:/usr/libexec/login.sh
 ttyS2::askfirst:/usr/libexec/login.sh
 EOF
+                         fi
                          echo "完成"
                          ;;
              amlogic)    cat > ./etc/inittab <<EOF
@@ -1311,6 +1336,7 @@ EOF
              qemu-aarch64)    cat > ./etc/inittab <<EOF
 ::sysinit:/etc/init.d/rcS S boot
 ::shutdown:/etc/init.d/rcS K shutdown
+tty1::askfirst:/usr/libexec/login.sh
 ttyAMA0::askfirst:/usr/libexec/login.sh
 EOF
                          echo "完成"
@@ -1659,15 +1685,21 @@ function write_uboot_to_disk() {
             echo "完成"
         fi
 
+	# rockchip的bootloader，统一从硬盘的第65个扇区开始至16MB这个范围
         if [ "$PLATFORM" == "rockchip" ] && [ -n "$BOOTLOADER_IMG" ] && [ -f "$BOOTLOADER_IMG" ];then
             echo "写入 bootloader ..."
-            echo "dd if=${BOOTLOADER_IMG} of=${TGT_DEV} conv=fsync,notrunc bs=1 count=442"
-            echo "dd if=${BOOTLOADER_IMG} of=${TGT_DEV} conv=fsync,notrunc bs=512 skip=1 seek=1"
-
-            dd if=${BOOTLOADER_IMG} of=${TGT_DEV} conv=fsync,notrunc bs=1 count=442
-            dd if=${BOOTLOADER_IMG} of=${TGT_DEV} conv=fsync,notrunc bs=512 skip=1 seek=1
-
+            local btld_home=${BOOTLOADER_IMG%/*}
+	    if [ -f "${btld_home}/idbloader.img" ] && [ -f "${btld_home}/u-boot.itb" ];then
+                echo "dd if=${btld_home}/idbloader.img of=${TGT_DEV} conv=fsync,notrunc bs=512 seek=64"
+                dd if=${btld_home}/idbloader.img of=${TGT_DEV} conv=fsync,notrunc bs=512 seek=64
+                echo "dd if=${btld_home}/u-boot.itb of=${TGT_DEV} conv=fsync,notrunc bs=512 seek=16384"
+                dd if=${btld_home}/u-boot.itb of=${TGT_DEV} conv=fsync,notrunc bs=512 seek=16384
+            else
+                echo "dd if=${BOOTLOADER_IMG} of=${TGT_DEV} conv=fsync,notrunc bs=512 skip=64 seek=64"
+                dd if=${BOOTLOADER_IMG} of=${TGT_DEV} conv=fsync,notrunc bs=512 skip=64 seek=64
+            fi
             sync
+
             echo "完成"
         fi
 
