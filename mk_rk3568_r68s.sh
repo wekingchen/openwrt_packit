@@ -103,18 +103,18 @@ DDBR="${PWD}/files/openwrt-ddbr"
 # 20220225 add
 SSH_CIPHERS="aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr,chacha20-poly1305@openssh.com"
 SSHD_CIPHERS="aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
-# 20220804 add
-BOARD_SCRIPT1="${PWD}/files/rk3568/r68s/50-pcie_eth_up"
+# 20220927 add
+BOARD_HOME="${PWD}/files/rk3568/r68s/board.d"
 ####################################################################
 
 check_depends
 
 SKIP_MB=16
 BOOT_MB=160
-ROOTFS_MB=720
-SIZE=$((SKIP_MB + BOOT_MB + ROOTFS_MB))
+ROOTFS_MB=960
+SIZE=$((SKIP_MB + BOOT_MB + ROOTFS_MB + 1))
 create_image "$TGT_IMG" "$SIZE"
-create_partition "$TGT_DEV" "msdos" "$SKIP_MB" "$BOOT_MB" "ext4" "0" "-1" "btrfs"
+create_partition "$TGT_DEV" "gpt" "$SKIP_MB" "$BOOT_MB" "ext4" "0" "-1" "btrfs"
 make_filesystem "$TGT_DEV" "B" "ext4" "EMMC_BOOT" "R" "btrfs" "EMMC_ROOTFS1"
 mount_fs "${TGT_DEV}p1" "${TGT_BOOT}" "ext4"
 mount_fs "${TGT_DEV}p2" "${TGT_ROOT}" "btrfs" "compress=zstd:${ZSTD_LEVEL}"
