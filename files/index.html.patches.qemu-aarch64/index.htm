@@ -25,7 +25,6 @@
 	local sysinfo = luci.util.ubus("system", "info") or { }
 	local boardinfo = luci.util.ubus("system", "board") or { }
 	local unameinfo = nixio.uname() or { }
-	local cpustat = luci.sys.exec("/usr/bin/cpustat") or { }
 
 	local meminfo = sysinfo.memory or {
 		total = 0,
@@ -73,8 +72,7 @@
 			conncount  = conn_count,
 			leases     = stat.dhcp_leases(),
 			leases6    = stat.dhcp6_leases(),
-			wifinets   = stat.wifi_networks(),
-			cpustat    = luci.sys.exec("/usr/bin/cpustat") or { }
+			wifinets   = stat.wifi_networks()
 		}
 
 		if wan then
@@ -701,20 +699,16 @@
 				for (var i in ports)
 				{
 					tmp = tmp + String.format(
-						'<td style="text-align:center"><span style="line-height:25px">%s</span><br /><small><img src="<%=resource%>/icons/%s" /><br />%s<br />%s<br />%s</small></td>', ports[i].name,
+						'<td style="text-align:center"><span style="line-height:25px">%s</span><br /><small><img src="<%=resource%>/icons/%s" /><br />%s<br />%s</small></td>', ports[i].name,
 							ports[i].operstate ? 'port_up.png' : 'port_down.png',
 							ports[i].driver,
-							ports[i].speed,
-							ports[i].temperature);
+							ports[i].speed);
 				};
 				e.innerHTML = "<tr>" + tmp + "</tr>";
 			}
 
 			if (e = document.getElementById('localtime'))
 				e.innerHTML = info.localtime;
-
-			if (e = document.getElementById('cpustat'))
-				e.innerHTML = info.cpustat;
 
 			if (e = document.getElementById('uptime'))
 				e.innerHTML = String.format('%t', info.uptime);
@@ -771,8 +765,8 @@
 
 	<table width="100%" cellspacing="10">
 		<tr><td width="33%"><%:Hostname%></td><td><%=luci.sys.hostname() or "?"%></td></tr>
-		<tr><td width="33%"><%:Model%></td><td><%=pcdata(boardinfo.model or "?")%> <%=luci.sys.exec("cat /etc/bench.log") or " "%></td></tr>
-		<tr><td width="33%"><%:Architecture%></td><td><%=luci.sys.exec("/usr/bin/cpustat -a")%></td></tr>
+		<tr><td width="33%"><%:Model%></td><td><%=luci.sys.exec("/usr/bin/cpustat -b")%> <%=luci.sys.exec("cat /etc/bench.log") or " "%></td></tr>
+		<tr><td width="33%"><%:Architecture%></td><td><%=pcdata(boardinfo.system or "ARMv8 Processor")%> x <%=luci.sys.exec("cat /proc/cpuinfo | grep 'processor' | wc -l") or "1"%></td></tr>
 		<tr><td width="33%"><%:Firmware Version%></td><td>
 			<%=pcdata(ver.distname)%> <%=pcdata(ver.distversion)%> /
 			<%=pcdata(ver.luciname)%> (<%=pcdata(ver.luciversion)%>)
@@ -780,7 +774,6 @@
 		<tr><td width="33%"><%:Kernel Version%></td><td><%=unameinfo.release or "?"%></td></tr>
 		<tr><td width="33%"><%:Local Time%></td><td id="localtime">-</td></tr>
 		<tr><td width="33%"><%:Uptime%></td><td id="uptime">-</td></tr>
-		<tr><td width="33%"><%:CPU状态%></td><td id="cpustat">-</td></tr>
 		<tr><td width="33%"><%:Load Average%></td><td id="loadavg">-</td></tr>
 		<tr><td width="33%"><%:CPU usage (%)%></td><td id="cpuusage">-</td></tr>
 	</table>
