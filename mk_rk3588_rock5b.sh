@@ -35,7 +35,6 @@ TGT_IMG="${WORK_DIR}/openwrt_${SOC}_${BOARD}_${OPENWRT_VER}_k${KERNEL_VERSION}${
 
 # patches、scripts
 ####################################################################
-REGULATORY_DB="${PWD}/files/regulatory.db.tar.gz"
 CPUSTAT_SCRIPT="${PWD}/files/cpustat"
 CPUSTAT_SCRIPT_PY="${PWD}/files/cpustat.py"
 INDEX_PATCH_HOME="${PWD}/files/index.html.patches"
@@ -105,7 +104,7 @@ SSHD_CIPHERS="aes256-gcm@openssh.com,aes128-gcm@openssh.com,chacha20-poly1305@op
 # 20220906 add
 PWM_FAN="${PWD}/files/rk3588/rock5b/pwm-fan.pl"
 # 20221001 add
-MODULES_HOME="${PWD}/files/rk3328/modules.d"
+MODULES_HOME="${PWD}/files/rk3588/modules.d"
 ####################################################################
 
 check_depends
