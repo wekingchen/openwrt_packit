@@ -20,7 +20,7 @@ jobs:
           sudo timedatectl set-timezone "Asia/Shanghai"
           
       - name: Package Armvirt as OpenWrt
-        uses: unifreq/openwrt_packit@master
+        uses: ophub/flippy-openwrt-actions@main
         env:
           OPENWRT_ARMVIRT: https://github.com/201821143044/Actions-N1-OpenWrt/releases/latest/download/openwrt-armvirt-64-generic-rootfs.tar.gz
           PACKAGE_SOC: s905d
