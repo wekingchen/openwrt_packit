@@ -158,10 +158,11 @@ function check_depends() {
         exit 1
     fi
 
+    # lsblk --version: from util-linux 2.39-dirty
     lsblk_version=$(lsblk --version|awk '{print $NF}' 2>/dev/null)
     if [ "$lsblk_version" != "" ];then
         m_v=$(echo ${lsblk_version} | cut -d '.' -f1)
-        s_v=$(echo ${lsblk_version} | cut -d '.' -f2)
+        s_v=$(echo ${lsblk_version} | cut -d '.' -f2 | tr -d '[a-zA-Z]|-')
         if [ $m_v -gt 2 ] || [ $m_v -eq 2 ] && [ $s_v -ge 33 ];then
             echo "check lsblk ok"
         else
@@ -1112,6 +1113,7 @@ function copy_supplement_files() {
         [ -n "$WIRELESS_CONFIG" ] && [ -f $WIRELESS_CONFIG ] && cp -v $WIRELESS_CONFIG etc/config/
         [ -n "$FIX_CPU_FREQ" ] && [ -f $FIX_CPU_FREQ ] && cp -v $FIX_CPU_FREQ ./usr/sbin && chmod 755 ./usr/sbin/fixcpufreq.pl
         [ -n "$SYSFIXTIME_PATCH" ] && [ -f $SYSFIXTIME_PATCH ] && patch -p1 < $SYSFIXTIME_PATCH
+        [ -n "$NETWORK_SERVICE_PATCH" ] && [ -f $NETWORK_SERVICE_PATCH ] && patch -p1 < $NETWORK_SERVICE_PATCH
         [ -n "$FORCE_REBOOT" ] && [ -f $FORCE_REBOOT ] && cp -v $FORCE_REBOOT usr/sbin/ 
 
         [ -n "$GET_RANDOM_MAC" ] && [ -f ${GET_RANDOM_MAC} ] && cp -v ${GET_RANDOM_MAC} ./usr/bin/
