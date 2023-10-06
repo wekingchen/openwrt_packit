@@ -1,4 +1,4 @@
-这是 Flippy 的 Openwrt 打包源码，主要用于制作基于arm64 soc的一系列电视盒及开发板可用的openwrt固件，例如：Phicomm N1(amlogic s905d)、贝壳云(rockchip rk3328)、我家云(rockchip rk3328)、微加云(allwinner H6)、Amlogic S905x3、Amlogic s912、Amlogic S922x、FastRhino R66S/R68S(RK3568)、Radxa E25(RK3568)、Radxa rock5b(RK3588)、HINLINK H66K/H68K(RK3568)、HINLINK H88K(RK3588)等，除了原生固件以外，也支持 ARM64 Docker openwrt、ARM64 QEMU KVM openwrt等多种形式的固件，基本可满足所有arm64机型的需求了。
+这是 Flippy 的 Openwrt 打包源码，主要用于制作基于arm64 soc的一系列电视盒及开发板可用的openwrt固件，例如：Phicomm N1(amlogic s905d)、贝壳云(rockchip rk3328)、我家云(rockchip rk3328)、微加云(allwinner H6)、Amlogic S905x3、Amlogic s912、Amlogic S922x、FastRhino R66S/R68S(RK3568)、Radxa E25(RK3568)、Radxa rock5b(RK3588)等，除了原生固件以外，也支持 ARM64 Docker openwrt、ARM64 QEMU KVM openwrt等多种形式的固件，基本可满足所有arm64机型的需求了。
 
 一、制作材料：
 1. Flippy预编译好的 Arm64 内核 (在 https://t.me/openwrt_flippy  及 https://pan.baidu.com/s/1tY_-l-Se2qGJ0eKl7FZBuQ 提取码：846l)
@@ -84,10 +84,23 @@
                                    Python3-sqlite3
                                    Python3-xml
                                    Python3-requests
+
+        * DM路由监视器依赖包： https://hiwbb.com/2021/10/openwrt-netdata-show-temperature/
+            *  (必选, required)
+            Applications -> luci-app-netdata
+       
+            * 二选一：建议首先python方式
+            Languages -> Python -> Python3-logging
+                                   Python3-ctypes
+                                   Python3-yaml
+            Utilities -> lm-sensors
+
+            * 或者(OR)   
+            Utilities -> coreutils -> coreutils-timeout
     
     除上述必选项以外的软件包可以按需自主选择。
 
-7. OpenWrt 在 KVM 虚拟机中的使用说明：
+8. OpenWrt 在 KVM 虚拟机中的使用说明：
 
 对于性能过剩的盒子，可以先安装 Armbian 系统，再安装 KVM 虚拟机实现多系统使用。其中 `OpenWrt` 系统的编译可以使用本仓库的 [mk_qemu-aarch64_img.sh](mk_qemu-aarch64_img.sh) 脚本进行制作，其安装与使用说明详见 [qemu-aarch64-readme.md](https://github.com/unifreq/openwrt_packit/blob/master/files/qemu-aarch64/qemu-aarch64-readme.md) 文档，更多系统如 Debian、Ubuntu、OpenSUSE、ArchLinux、Centos、Gentoo、KyLin、UOS 等可在相关网站查阅安装与使用说明。
 
