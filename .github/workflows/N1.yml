@@ -49,7 +49,7 @@ jobs:
                 升级完成后系统会自动重启，稍安勿躁。
 
       - name: Remove old Releases
-        uses: dev-drprasad/delete-older-releases@v0.2.0
+        uses: dev-drprasad/delete-older-releases@v0.3.2
         with:
          keep_latest: 10
          delete_tags: true
