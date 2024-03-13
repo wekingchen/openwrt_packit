@@ -220,7 +220,13 @@ sub get_eth_temperature {
     return $ret if (! -d "/proc/net/r8125/$eth_name");
     if($driver eq 'r8125') {
 	my $fh;
-	open $fh, "<", "/proc/net/r8125/$eth_name/temp" or die $!;
+	if (-f "/proc/net/r8125/$eth_name/test/temp") {
+		open $fh, "<", "/proc/net/r8125/$eth_name/test/temp" or die $!;
+	} elsif (-f "/proc/net/r8125/$eth_name/temp") {
+		open $fh, "<", "/proc/net/r8125/$eth_name/temp" or die $!;
+	} else {
+		return $ret;
+	}
 	while(<$fh>) {
             chomp;
 	    if(/^Cel:/) {
@@ -235,7 +241,7 @@ sub get_eth_temperature {
 
 sub get_ethlist() {
     my $board = &get_boardinfo;
-    if($board eq "FastRhino R66S") {
+    if($board =~ m/FastRhino R66S/i) {
 	return reverse sort (</sys/class/net/e[tn]*>);
     } elsif($board eq "Hlink H68K") {
 	return reverse sort (</sys/class/net/e[tn]*>);
@@ -343,7 +349,8 @@ sub get_dc_voltage() {
 	$down_res = 27;
 	$iio_channel = 4;
 	$ret = "(Probably) 12";
-    } elsif($board =~ m/Radxa ROCK 5B/) {
+    } elsif(($board =~ m/Radxa ROCK 5B/i) ||
+	    ($board =~ m/Radxa ROCK 5 Model B/i)) {
 	$up_res = 100;
 	$down_res = 8.2;
 	$iio_channel = 6;
