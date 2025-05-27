@@ -22,6 +22,7 @@ jobs:
         uses: wekingchen/openwrt_packit@master
         env:
           OPENWRT_ARMSR: https://github.com/201821143044/Actions-N1-OpenWrt/releases/latest/download/openwrt-armsr-armv8-generic-rootfs.tar.gz
+          #OPENWRT_ARMSR: https://github.com/golldenstj/N1project/releases/latest/download/openwrt-armsr-armv8-generic-rootfs.tar.gz
           PACKAGE_SOC: s905d
           KERNEL_VERSION_NAME: 6.12.23_6.1.134
           KERNEL_AUTO_LATEST: true
